@@ -90,6 +90,7 @@ type AWSManagedControlPlaneReconciler struct {
 	EnableIAM            bool
 	AllowAdditionalRoles bool
 	WatchFilterValue     string
+	WaitInfraPeriod      time.Duration
 	ExternalResourceGC   bool
 }
 
@@ -232,7 +233,7 @@ func (r *AWSManagedControlPlaneReconciler) reconcileNormal(ctx context.Context, 
 		// Wait for the cluster infrastructure to be ready before creating machines
 		if !managedScope.Cluster.Status.InfrastructureReady {
 			managedScope.Info("Cluster infrastructure is not ready yet")
-			return ctrl.Result{}, nil
+			return ctrl.Result{RequeueAfter: r.WaitInfraPeriod}, nil
 		}
 	}
 
