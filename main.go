@@ -94,6 +94,7 @@ var (
 	awsClusterConcurrency    int
 	instanceStateConcurrency int
 	awsMachineConcurrency    int
+	waitInfraPeriod          time.Duration
 	syncPeriod               time.Duration
 	webhookPort              int
 	webhookCertDir           string
@@ -193,7 +194,7 @@ func main() {
 
 	setupReconcilersAndWebhooks(ctx, mgr, awsServiceEndpoints, externalResourceGC)
 	if feature.Gates.Enabled(feature.EKS) {
-		setupEKSReconcilersAndWebhooks(ctx, mgr, awsServiceEndpoints, externalResourceGC)
+		setupEKSReconcilersAndWebhooks(ctx, mgr, awsServiceEndpoints, externalResourceGC, waitInfraPeriod)
 	}
 
 	// +kubebuilder:scaffold:builder
@@ -314,7 +315,7 @@ func setupReconcilersAndWebhooks(ctx context.Context, mgr ctrl.Manager, awsServi
 }
 
 func setupEKSReconcilersAndWebhooks(ctx context.Context, mgr ctrl.Manager, awsServiceEndpoints []scope.ServiceEndpoint,
-	externalResourceGC bool,
+	externalResourceGC bool, waitInfraPeriod time.Duration,
 ) {
 	setupLog.Info("enabling EKS controllers and webhooks")
 
@@ -339,6 +340,7 @@ func setupEKSReconcilersAndWebhooks(ctx context.Context, mgr ctrl.Manager, awsSe
 		AllowAdditionalRoles: allowAddRoles,
 		Endpoints:            awsServiceEndpoints,
 		WatchFilterValue:     watchFilterValue,
+		WaitInfraPeriod:      waitInfraPeriod,
 		ExternalResourceGC:   externalResourceGC,
 	}).SetupWithManager(ctx, mgr, controller.Options{MaxConcurrentReconciles: awsClusterConcurrency, RecoverPanic: true}); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AWSManagedControlPlane")
@@ -460,6 +462,12 @@ func initFlags(fs *pflag.FlagSet) {
 		"awsmachine-concurrency",
 		10,
 		"Number of AWSMachines to process simultaneously",
+	)
+
+	fs.DurationVar(&waitInfraPeriod,
+		"wait-infra-period",
+		1*time.Minute,
+		"The minimum interval at which reconcile process wait for infrastructure to be ready.",
 	)
 
 	fs.DurationVar(&syncPeriod,
