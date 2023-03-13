@@ -678,3 +678,6 @@ clean-temporary: ## Remove all temporary files and folders
 	rm -rf test/e2e/capi-kubeadm-control-plane-controller-manager
 	rm -rf test/e2e/logs
 	rm -rf test/e2e/resources
+
+change-version:
+	hack/custom/change-version.sh $(version)
